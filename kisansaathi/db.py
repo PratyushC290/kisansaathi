@@ -4,8 +4,10 @@ Supabase Postgres in production (HF Spaces disk is wiped on restart); SQLite loc
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime
 from functools import lru_cache
+from pathlib import Path
 
 from sqlalchemy import (
     JSON,
@@ -78,11 +80,26 @@ class QueryLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+LOCAL_SQLITE = f"sqlite:///{Path(__file__).resolve().parent.parent / 'kisansaathi.sqlite3'}"
+status = {"backend": "", "warning": ""}  # shown in the UI status panel
+
+
 @lru_cache
 def engine():
+    """Supabase Postgres if reachable; otherwise the local SQLite file, so the app never crashes on a DB outage."""
     url = settings().db_url
-    eng = create_engine(url, pool_pre_ping=True, future=True)
-    Base.metadata.create_all(eng)
+    try:
+        eng = create_engine(url, pool_pre_ping=True, future=True,
+                            connect_args={"connect_timeout": 8} if url.startswith("postgresql") else {})
+        Base.metadata.create_all(eng)
+    except Exception as e:  # noqa: BLE001
+        if url == LOCAL_SQLITE:
+            raise
+        logging.getLogger(__name__).warning("database unreachable (%s); using local SQLite", type(e).__name__)
+        status["warning"] = f"Cloud database unreachable ({type(e).__name__}); using local storage"
+        eng = create_engine(LOCAL_SQLITE, future=True)
+        Base.metadata.create_all(eng)
+    status["backend"] = eng.dialect.name
     return eng
 
 

@@ -28,6 +28,9 @@ Rules:
    Kisan Call Centre {kcc} (free).
 5. If evidence is marked "cached", say the data was last updated at its time.
 6. Prices are in ₹ per quintal unless stated. Keep [S#] markers exactly; write numbers with digits.
+7. Sell-or-hold questions: use the market comparison evidence — say how the best nearby market compares with
+   the state average, and the recorded trend (or that there is not enough history yet). Mention rain in the
+   next days if it affects harvest/transport. Never predict future prices; the farmer decides.
 {problems}"""
 
 JUDGE = """You check a farm-advice answer against its evidence. List every claim (number, date, price,

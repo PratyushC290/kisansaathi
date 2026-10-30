@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     database_url: str = ""
 
     # Model names drift; override from env without touching code.
-    gemini_model: str = "gemini-2.5-flash"
-    groq_model: str = "llama-3.3-70b-versatile"
+    gemini_model: str = "gemini-3.5-flash-lite"       # writes answers (lite: faster + more free quota)
+    gemini_fast_model: str = "gemini-3.5-flash-lite"  # routing + judging (cheaper quota)
+    groq_model: str = "openai/gpt-oss-120b"           # fallback when Gemini is rate-limited/overloaded
     embed_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
     # Upstream URLs are settings so we can point one at http://invalid to demo robustness.

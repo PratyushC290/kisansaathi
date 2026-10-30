@@ -1,8 +1,9 @@
 """Voice in and out for Indian languages, each with a fallback chain.
 
-transcribe(audio) : Sarvam saarika STT -> Gemini audio understanding
-tts(text, lang)   : Sarvam bulbul TTS  -> gTTS (Google Translate voices, free)
-API field names drift; both providers are wrapped so a failure just moves to the next one.
+transcribe(audio) : Sarvam saaras:v4 STT -> Gemini audio understanding
+tts(text, lang)   : Sarvam bulbul:v3 TTS -> gTTS (Google Translate voices, free)
+Request fields follow docs.sarvam.ai (checked 31 Oct 2026); each provider is wrapped so a failure
+just moves to the next one.
 """
 from __future__ import annotations
 
@@ -22,14 +23,14 @@ SUPPORTED = {"en", "hi", "mr", "ta", "te", "bn", "kn", "gu", "pa", "ml", "or"}
 
 
 def _bcp47(lang: str) -> str:
-    return f"{lang}-IN"
+    return "od-IN" if lang == "or" else f"{lang}-IN"  # Sarvam uses od-IN for Odia
 
 
 def _sarvam_stt(audio: bytes, mime: str) -> tuple[str, str]:
     r = httpx.post(f"{SARVAM}/speech-to-text", timeout=60,
                    headers={"api-subscription-key": settings().sarvam_api_key},
                    files={"file": ("question.wav", audio, mime)},
-                   data={"model": "saarika:v2.5", "language_code": "unknown"})
+                   data={"model": "saaras:v4", "language_code": "unknown"})  # unknown = auto-detect
     r.raise_for_status()
     j = r.json()
     lang = (j.get("language_code") or "hi-IN").split("-")[0]
@@ -52,6 +53,21 @@ def _gemini_stt(audio: bytes, mime: str) -> tuple[str, str]:
     return j.get("transcript", "").strip(), (j.get("language") or "hi")[:2]
 
 
+WHISPER_LANG = {"hindi": "hi", "marathi": "mr", "english": "en", "tamil": "ta", "telugu": "te", "bengali": "bn",
+                "kannada": "kn", "gujarati": "gu", "punjabi": "pa", "malayalam": "ml", "odia": "or", "urdu": "hi"}
+
+
+def _groq_stt(audio: bytes, mime: str) -> tuple[str, str]:
+    """Groq-hosted Whisper (free tier) — last voice fallback."""
+    r = httpx.post("https://api.groq.com/openai/v1/audio/transcriptions", timeout=60,
+                   headers={"Authorization": f"Bearer {settings().groq_api_key}"},
+                   files={"file": ("question.wav", audio, mime)},
+                   data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"})
+    r.raise_for_status()
+    j = r.json()
+    return j.get("text", "").strip(), WHISPER_LANG.get((j.get("language") or "").lower(), "hi")
+
+
 def transcribe(audio: bytes, mime: str = "audio/wav") -> tuple[str, str, str]:
     """Return (transcript, language, provider). Empty transcript means 'please repeat'."""
     s = settings()
@@ -60,6 +76,8 @@ def transcribe(audio: bytes, mime: str = "audio/wav") -> tuple[str, str, str]:
         chain.append(("Sarvam saarika", _sarvam_stt))
     if s.gemini_api_key:
         chain.append(("Gemini audio", _gemini_stt))
+    if s.groq_api_key:
+        chain.append(("Groq Whisper", _groq_stt))
     for name, fn in chain:
         try:
             text, lang = fn(audio, mime)
@@ -73,8 +91,8 @@ def transcribe(audio: bytes, mime: str = "audio/wav") -> tuple[str, str, str]:
 def _sarvam_tts(text: str, lang: str) -> bytes:
     r = httpx.post(f"{SARVAM}/text-to-speech", timeout=60,
                    headers={"api-subscription-key": settings().sarvam_api_key},
-                   json={"text": text[:1500], "target_language_code": _bcp47(lang), "model": "bulbul:v2",
-                         "speaker": "anushka", "pace": 0.95})
+                   json={"text": text[:2500], "language_code": _bcp47(lang), "model": "bulbul:v3",
+                         "speaker": "priya", "pace": 0.95})
     r.raise_for_status()
     return base64.b64decode(r.json()["audios"][0])
 

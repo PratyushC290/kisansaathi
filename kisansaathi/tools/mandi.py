@@ -3,9 +3,13 @@
 data.gov.in only serves the latest day, so `jobs/snapshot_prices.py` saves each day's rows to
 the price_history table; trends are computed from those real snapshots (never synthesised).
 Prices are ₹ per quintal (100 kg).
+
+Note: data.gov.in's commodity filter is a loose text match ("Wheat" also returns "Wheat Atta"), so rows are
+always re-filtered to exact commodity names here.
 """
 from __future__ import annotations
 
+import time
 from datetime import date, datetime, timedelta
 from statistics import mean
 
@@ -25,9 +29,12 @@ def _num(v):
         return None
 
 
-def _rows(j) -> list[dict]:
+def _rows(j, keep: set[str] | None = None) -> list[dict]:
+    """Normalise API records; if `keep` is given, only rows whose commodity is exactly one of those names."""
     out = []
     for r in j.get("records", []):
+        if keep and str(r.get("commodity") or r.get("Commodity") or "").strip() not in keep:
+            continue
         modal = _num(r.get("modal_price") or r.get("Modal_Price") or r.get("Modal_x0020_Price"))
         if not modal:
             continue
@@ -36,20 +43,18 @@ def _rows(j) -> list[dict]:
             d = datetime.strptime(raw_date, "%d/%m/%Y").date()
         except ValueError:
             continue
-        out.append({"date": d, "state": r.get("state") or r.get("State", ""),
-                    "district": r.get("district") or r.get("District", ""),
-                    "market": r.get("market") or r.get("Market", ""),
-                    "commodity": r.get("commodity") or r.get("Commodity", ""),
-                    "variety": r.get("variety") or r.get("Variety", "") or "",
-                    "grade": r.get("grade") or r.get("Grade", "") or "",
+        g = lambda k, r=r: str(r.get(k) or r.get(k.capitalize()) or "").strip()  # noqa: E731 - names have stray spaces
+        out.append({"date": d, "state": g("state"), "district": g("district"), "market": g("market"),
+                    "commodity": g("commodity"), "variety": g("variety"), "grade": g("grade"),
                     "min_price": _num(r.get("min_price") or r.get("Min_Price") or r.get("Min_x0020_Price")) or modal,
                     "max_price": _num(r.get("max_price") or r.get("Max_Price") or r.get("Max_x0020_Price")) or modal,
                     "modal_price": modal})
     return out
 
 
-def fetch_all(commodity: str | None = None, state: str | None = None) -> list[dict]:
-    """Page through today's full dataset (used by the snapshot job). Raises on failure."""
+def fetch_all(commodity: str | None = None, state: str | None = None, keep: set[str] | None = None) -> list[dict]:
+    """Page through today's full dataset (used by the snapshot job). Raises on failure.
+    Pauses between pages: data.gov.in silently returns empty pages when called in quick bursts."""
     s = settings()
     rows, offset = [], 0
     while True:
@@ -59,11 +64,11 @@ def fetch_all(commodity: str | None = None, state: str | None = None) -> list[di
         if commodity:
             params["filters[commodity]"] = commodity
         j = get_json(s.mandi_url, params, timeout=40)
-        page = _rows(j)
-        rows += page
+        rows += _rows(j, keep)
         if len(j.get("records", [])) < PAGE:
             return rows
         offset += PAGE
+        time.sleep(1.5)
 
 
 def get_prices(commodity: str, state: str, district: str = "") -> ToolResult:
@@ -73,7 +78,7 @@ def get_prices(commodity: str, state: str, district: str = "") -> ToolResult:
         return ToolResult(tool="mandi", ok=False, source=SOURCE, error="DATA_GOV_IN_API_KEY not configured")
 
     def parse(j):
-        rows = _rows(j)
+        rows = _rows(j, {commodity})
         if not rows:
             raise ValueError(f"no {commodity} prices reported in {state} today")
         try:  # store what we saw — every live fetch grows our own history

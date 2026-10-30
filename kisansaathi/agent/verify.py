@@ -35,14 +35,23 @@ def evidence_numbers(pack: list[dict], extra_text: str = "") -> set[float]:
     return nums
 
 
+def _rounds_to(n: float, e: float) -> bool:
+    """True if n is e, or e honestly rounded (4652 -> 4650 or 4700; 30.3 -> 30). No percentage slack:
+    a % tolerance let '2020' pass for '2026' and '4460' for '4400'."""
+    if abs(n - e) <= 0.51:
+        return True
+    if n != int(n) or 1900 <= n <= 2100:  # decimals must match to ±0.5; years must match exactly
+        return False
+    for unit in (1000, 100, 50, 10):
+        if n % unit == 0 and abs(n - e) <= unit / 2 and e >= unit:
+            return True
+    return False
+
+
 def _supported(n: float, ev: set[float]) -> bool:
     if n <= FREE_SMALL:
         return True
-    for e in ev:
-        for cand in (e, e / 100, e * 100):  # ₹/quintal <-> ₹/kg
-            if abs(n - cand) <= 0.51 or (cand and abs(n - cand) / abs(cand) <= 0.015):
-                return True
-    return False
+    return any(_rounds_to(n, cand) for e in ev for cand in (e, e / 100, e * 100))  # ₹/quintal <-> ₹/kg
 
 
 def check(answer: str, pack: list[dict], question: str = "") -> list[str]:

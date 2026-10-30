@@ -35,9 +35,17 @@ def check_all() -> list[dict]:
                           {"api-key": s.data_gov_in_api_key, "format": "json", "limit": 1}, timeout=15))
     else:
         out.append({"name": "Mandi prices (data.gov.in)", "status": "down", "ms": 0, "detail": "API key not set"})
-    models = llm.available()
-    out.append({"name": "AI model", "status": "ok" if len(models) == 2 else "degraded" if models else "down",
-                "ms": 0, "detail": " → ".join(m.split(":")[0] for m in models) or "no key: data-only answers"})
+    models, cool = llm.available(), llm.cooling()
+    ready = [m for m in models if m not in cool]
+    detail = " → ".join(m.split(":", 1)[1] for m in models) or "no key: data-only answers"
+    if cool:
+        detail += " · paused: " + ", ".join(f"{m.split(':', 1)[1]} ({s}s)" for m, s in cool.items())
+    out.append({"name": "AI models", "status": "ok" if len(ready) == len(models) and models else
+                "degraded" if ready else "down", "ms": 0, "detail": detail})
+    from . import db
+    db.engine()
+    out.append({"name": "Database", "status": "degraded" if db.status["warning"] else "ok", "ms": 0,
+                "detail": db.status["warning"] or db.status["backend"]})
     try:
         from .tools.knowledge import _collection
         n = _collection().count()

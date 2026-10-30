@@ -25,5 +25,13 @@ def test_fake_citation_and_uncited_number():
     assert any("S9" in p for p in probs) and any("without a citation" in p for p in probs)
 
 
+def test_wrong_year_and_near_miss_prices_are_caught():
+    # Regression: a Marathi draft wrote २०२० for 2026 and passed under the old 1.5% tolerance.
+    assert check("३० ऑक्टोबर २०२० रोजी भाव [S1]।", PACK)
+    assert check("Price ₹2180 per quintal [S2].", PACK)        # 2150 in evidence: not a rounding of it
+    assert check("About ₹2200 per quintal [S2].", PACK) == []  # honest rounding to the nearest 100
+    assert check("Price ₹2150 on 2026-11-02 [S1, S2].", PACK) == []
+
+
 def test_helpline_and_small_counts_allowed():
     assert check("Wait 2-3 days and call 1800-180-1551 [S1].", PACK) == []

@@ -18,7 +18,7 @@ crops:
 
   rice:
     names: {en: Rice (paddy), hi: धान, mr: भात, pa: ਝੋਨਾ, ta: நெல், te: వరి, bn: ধান, kn: ಭತ್ತ, gu: ડાંગર}
-    agmarknet: ["Paddy(Dhan)(Common)", "Paddy(Dhan)(Basmati)", Rice]
+    agmarknet: ["Paddy(Common)", "Paddy(Fine/Superfine/Grade A)", "Paddy(Basmati)"]  # exact names seen in the API 31 Oct 2026
     season: kharif
     stages: {init: 30, dev: 30, mid: 60, late: 30}
     stage_source: "fao56_ch6 Table 11, Rice, Tropics"

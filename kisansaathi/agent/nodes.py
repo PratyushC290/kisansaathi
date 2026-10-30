@@ -80,7 +80,7 @@ def node_understand(state: AgentState) -> dict:
     try:
         u, model = llm.chat_json(
             UNDERSTAND.format(crops=profile_crops or "none", supported=list(crop_stage.crops()), intents=INTENTS),
-            f"Farmer's message: <<<{q}>>>", Understanding)
+            f"Farmer's message: <<<{q}>>>", Understanding, tier="fast")
         intents = [i for i in u.intents if i in INTENTS] or ["general"]
         crop = u.crop if u.crop in crop_stage.crops() else crop_stage.match_crop(q)
         lang = u.language if u.language in LANGUAGES else farmer.language
@@ -191,6 +191,27 @@ def _wd(d: str) -> str:
     return date.fromisoformat(d).strftime("%a %d %b")
 
 
+def market_signal(prices: dict, trend: dict | None, days: list[dict]) -> dict:
+    """Facts a farmer weighs for 'sell now or hold?' — computed, so the LLM explains rather than guesses.
+    We never forecast prices; we compare today's prices and report the recorded trend honestly."""
+    local = [x for x in prices["markets"] if prices["district"] and x["district"].lower() == prices["district"].lower()]
+    best = max(local or prices["markets"], key=lambda x: x["modal_price"])
+    avg = prices["state_avg_modal"]
+    sig = {"best_nearby_market": best["market"], "best_nearby_district": best["district"],
+           "best_nearby_modal": best["modal_price"], "state_avg_modal": avg,
+           "best_vs_state_avg_pct": round((best["modal_price"] - avg) / avg * 100, 1) if avg else None,
+           "same_district_markets": len(local), "unit": "₹/quintal", "price_date": prices["arrival_date"]}
+    if trend and trend.get("history_days", 0) >= 3:
+        sig |= {"trend": trend["direction"], "trend_change_pct": trend.get("change_pct"),
+                "trend_days": trend["history_days"]}
+    else:
+        n = trend.get("history_days", 0) if trend else 0
+        sig["trend"] = f"not enough history yet ({n} day(s) recorded) — no trend claim possible"
+    rain3 = round(sum((d.get("rain_mm") or 0) for d in days[:3]), 1)
+    sig["rain_next_3_days_mm"] = rain3
+    return sig
+
+
 def node_assess(state: AgentState) -> dict:
     ev, farmer, crop = state["evidence"], state["farmer"], state.get("crop")
     pack: list[dict] = []
@@ -263,6 +284,10 @@ def node_assess(state: AgentState) -> dict:
                      f"{', since ' + td['since'] if td['since'] else ''})",
             {k: td.get(k) for k in ("direction", "change_pct", "history_days", "since")} | {"series": td["series"][-14:]},
             detail="our own database")
+    if m and m.ok:
+        add("market_signal", "KisanSaathi comparison: your district's markets vs state average, trend, rain",
+            market_signal(m.data, t.data if t and t.ok else None, w.data["days"] if w and w.ok else []),
+            detail="computed from the mandi data, price history and forecast above")
     k = ev.get("knowledge")
     if k and k.ok:
         for h in k.data:
@@ -314,7 +339,8 @@ def node_verify(state: AgentState) -> dict:
     if not problems:
         try:  # LLM judge: catches unsupported *claims*, not just numbers
             j, model = llm.chat_json(JUDGE.format(kcc=KCC),
-                                     f"EVIDENCE:\n{_evidence_text(state)}\n\nANSWER:\n{d.answer_en}", Judgement)
+                                     f"EVIDENCE:\n{_evidence_text(state)}\n\nANSWER:\n{d.answer_en}", Judgement,
+                                     tier="fast")
             if not j.supported and j.unsupported_claims:
                 problems = [f"Unsupported claim: {c}" for c in j.unsupported_claims[:4]]
         except Exception:  # noqa: BLE001 - judge is a bonus; programmatic checks already passed
