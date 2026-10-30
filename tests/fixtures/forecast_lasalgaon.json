@@ -1,0 +1,162 @@
+{
+ "lat": 20.140596,
+ "lon": 74.21844,
+ "units": {
+  "time": "iso8601",
+  "temperature_2m_max": "\u00b0C",
+  "temperature_2m_min": "\u00b0C",
+  "precipitation_sum": "mm",
+  "precipitation_probability_max": "%",
+  "wind_speed_10m_max": "km/h",
+  "et0_fao_evapotranspiration": "mm",
+  "relative_humidity_2m_mean": "%"
+ },
+ "days": [
+  {
+   "date": "2026-10-31",
+   "tmax_c": 30.3,
+   "tmin_c": 21.5,
+   "rain_mm": 0.0,
+   "rain_prob_pct": 28,
+   "wind_max_kmh": 14.2,
+   "et0_mm": 4.34,
+   "rh_mean_pct": 66,
+   "rh_hours_above_85": 4,
+   "soil_moisture_3_9cm": 0.297,
+   "spray_hours": [
+    "06:00",
+    "07:00",
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00"
+   ]
+  },
+  {
+   "date": "2026-11-01",
+   "tmax_c": 30.0,
+   "tmin_c": 22.5,
+   "rain_mm": 4.1,
+   "rain_prob_pct": 67,
+   "wind_max_kmh": 14.6,
+   "et0_mm": 3.69,
+   "rh_mean_pct": 74,
+   "rh_hours_above_85": 7,
+   "soil_moisture_3_9cm": 0.303,
+   "spray_hours": [
+    "06:00",
+    "07:00",
+    "08:00",
+    "09:00",
+    "10:00",
+    "14:00"
+   ]
+  },
+  {
+   "date": "2026-11-02",
+   "tmax_c": 30.0,
+   "tmin_c": 21.5,
+   "rain_mm": 14.1,
+   "rain_prob_pct": 84,
+   "wind_max_kmh": 15.5,
+   "et0_mm": 3.78,
+   "rh_mean_pct": 76,
+   "rh_hours_above_85": 7,
+   "soil_moisture_3_9cm": 0.373,
+   "spray_hours": [
+    "06:00",
+    "07:00",
+    "08:00"
+   ]
+  },
+  {
+   "date": "2026-11-03",
+   "tmax_c": 30.1,
+   "tmin_c": 20.7,
+   "rain_mm": 1.2,
+   "rain_prob_pct": 63,
+   "wind_max_kmh": 13.1,
+   "et0_mm": 3.82,
+   "rh_mean_pct": 77,
+   "rh_hours_above_85": 11,
+   "soil_moisture_3_9cm": 0.432,
+   "spray_hours": [
+    "06:00",
+    "13:00",
+    "14:00"
+   ]
+  },
+  {
+   "date": "2026-11-04",
+   "tmax_c": 30.1,
+   "tmin_c": 21.1,
+   "rain_mm": 0.0,
+   "rain_prob_pct": 43,
+   "wind_max_kmh": 10.8,
+   "et0_mm": 4.27,
+   "rh_mean_pct": 65,
+   "rh_hours_above_85": 0,
+   "soil_moisture_3_9cm": 0.398,
+   "spray_hours": [
+    "06:00",
+    "07:00",
+    "08:00",
+    "09:00",
+    "13:00",
+    "14:00",
+    "15:00"
+   ]
+  },
+  {
+   "date": "2026-11-05",
+   "tmax_c": 30.2,
+   "tmin_c": 21.8,
+   "rain_mm": 0.0,
+   "rain_prob_pct": 14,
+   "wind_max_kmh": 11.5,
+   "et0_mm": 4.58,
+   "rh_mean_pct": 61,
+   "rh_hours_above_85": 0,
+   "soil_moisture_3_9cm": 0.37,
+   "spray_hours": [
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00"
+   ]
+  },
+  {
+   "date": "2026-11-06",
+   "tmax_c": 30.4,
+   "tmin_c": 21.4,
+   "rain_mm": 0.0,
+   "rain_prob_pct": 14,
+   "wind_max_kmh": 14.9,
+   "et0_mm": 4.72,
+   "rh_mean_pct": 59,
+   "rh_hours_above_85": 0,
+   "soil_moisture_3_9cm": 0.348,
+   "spray_hours": [
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00"
+   ]
+  }
+ ]
+}

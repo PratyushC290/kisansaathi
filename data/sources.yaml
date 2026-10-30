@@ -1,0 +1,59 @@
+# Official agronomy documents. `rag/ingest.py` downloads these at build time (data/raw/ is not committed),
+# extracts text page by page, and indexes it in Chroma. Page numbers in rules.yaml / answers are PDF page
+# indices (the page number your PDF viewer shows), not the printed page number.
+documents:
+  - id: pau_rabi
+    title: Package of Practices for Crops of Punjab — Rabi 2025-26
+    publisher: Punjab Agricultural University, Ludhiana
+    url: https://www.pau.edu/content/ccil/pf/pp_rabi.pdf
+    type: pdf
+    crops: [wheat]
+    year: 2025
+
+  - id: pau_kharif
+    title: Package of Practices for Crops of Punjab — Kharif 2026
+    publisher: Punjab Agricultural University, Ludhiana
+    url: https://www.pau.edu/content/ccil/pf/pp_kharif.pdf
+    type: pdf
+    crops: [rice, cotton, soybean]
+    year: 2026
+
+  - id: pau_veg
+    title: Package of Practices for Cultivation of Vegetables 2021
+    publisher: Punjab Agricultural University, Ludhiana
+    url: https://www.pau.edu/content/ccil/pf/pp_veg.pdf
+    type: pdf
+    crops: [tomato, onion, potato]
+    year: 2021
+
+  - id: dogr_onion_gap
+    title: Good Agricultural Practices in Onion and Garlic Production
+    publisher: ICAR-Directorate of Onion and Garlic Research, Pune & MANAGE, Hyderabad
+    url: https://www.manage.gov.in/publications/eBooks/Good%20Agricultural%20Practices%20in%20Onion%20and%20Garlic.pdf
+    type: pdf
+    crops: [onion]
+    year: 2022
+
+  - id: iisr_soy_eb18
+    title: Improved Technologies and Recommendations for Maximizing Soybean Productivity (Extension Bulletin 18)
+    publisher: ICAR-Indian Institute of Soybean Research, Indore
+    url: https://icar-nsri.res.in/pdfdoc/ExtensionBulletin2023E_2.pdf
+    type: pdf
+    crops: [soybean]
+    year: 2023
+
+  - id: iisr_soy_climate
+    title: Climate Smart Technologies & Practices for Increasing the Soybean Productivity
+    publisher: ICAR-Indian Institute of Soybean Research & MANAGE
+    url: https://www.manage.gov.in/publications/eBooks/Climate%20Smart%20Soybean%20Production%20Technologies.pdf
+    type: pdf
+    crops: [soybean]
+    year: 2021
+
+  - id: fao56_ch6
+    title: FAO Irrigation and Drainage Paper 56 — Crop evapotranspiration, Chapter 6 (single crop coefficient)
+    publisher: Food and Agriculture Organization of the UN
+    url: https://www.fao.org/4/x0490e/x0490e0b.htm
+    type: html
+    crops: [wheat, rice, cotton, soybean, onion, tomato, potato]
+    year: 1998

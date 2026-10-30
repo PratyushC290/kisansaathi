@@ -1,0 +1,369 @@
+# Deterministic agronomy rules evaluated over the live 7-day forecast (tools/rules.py).
+#
+# Every rule cites the official document + PDF page it comes from (ids in sources.yaml).
+#   basis: quoted       -> the threshold numbers are written in the cited document
+#          operational  -> the document states the condition in words ("calm days", "moist weather");
+#                          `note` explains how we turned it into a number and why.
+#          mixed        -> some numbers quoted, some operational (see note)
+#
+# scope: day      -> checked on each forecast day (fields below)
+#        forecast -> checked once over the whole forecast (aggregate fields)
+#        stage    -> fires once when the crop is in one of `stages` (no weather condition)
+# Day fields: tmax_c tmin_c tmean_c rain_mm rain_prob_pct wind_max_kmh rh_mean_pct rh_hours_above_85
+#             spray_hour_count rain_next24_mm
+# Forecast fields: rain_total_mm max_tmax_c min_tmin_c
+# stages: init | dev | mid | late  (FAO-56 stages; meaning per crop in crops.yaml stage_labels)
+# Conditions: [field, op, value] with op in > >= < <= between (value = [lo, hi])
+
+rules:
+  # ---------------- spraying (all crops) ----------------
+  - id: spray_rain_24h
+    crops: [all]
+    scope: day
+    all: [[rain_next24_mm, ">=", 2.5]]
+    value_field: rain_next24_mm
+    type: no_spray_rain
+    severity: medium
+    message: "Rain of about {value} mm expected within 24 hours — a spray done now may wash off."
+    action: "Postpone pesticide/fungicide sprays until a dry 24-hour window."
+    basis: operational
+    note: "PAU says to repeat a spray if it rains within 24 h of spraying (rain makes the spray ineffective). 'Rain' = IMD rainy-day threshold of 2.5 mm."
+    citations:
+      - {doc: pau_kharif, page: 65, quote: "Repeat the spray immediately if it rains with in 24 hours after spray."}
+
+  - id: spray_no_calm_hours
+    crops: [all]
+    scope: day
+    all: [[spray_hour_count, "==", 0]]
+    value_field: wind_max_kmh
+    type: no_spray_wind
+    severity: low
+    message: "No calm, dry daytime hour (wind under 10 km/h and rain chance under 30%) — max wind {value} km/h."
+    action: "Do not spray today; drift and wash-off waste chemical."
+    basis: operational
+    note: "PAU: spray only on calm days. 'Calm enough' = below 10 km/h, i.e. no stronger than a light breeze on the Beaufort scale (6-11 km/h)."
+    citations:
+      - {doc: pau_kharif, page: 167, quote: "Never spray accross the direction of the wind flow. Spray should be done on calm days."}
+      - {doc: dogr_onion_gap, page: 130, quote: "...or late evening to avoid excessive drift (wind is normally lower during these time periods)"}
+
+  - id: heavy_rain
+    crops: [all]
+    scope: day
+    all: [[rain_mm, ">=", 64.5]]
+    value_field: rain_mm
+    type: heavy_rain
+    severity: high
+    message: "Heavy rain forecast: {value} mm."
+    action: "Open field drainage channels; avoid water standing in the field; postpone fertiliser and sprays."
+    basis: operational
+    note: "64.5 mm/day is IMD's 'heavy rainfall' category. Water stagnation raises fungal disease risk (DOGR)."
+    citations:
+      - {doc: dogr_onion_gap, page: 47, quote: "under high soil moisture, the incidence of fungal diseases such as anthracnose and stemphylium blight flares up. Therefore, water stagnation in the field should be avoided."}
+
+  # ---------------- wheat ----------------
+  - id: wheat_heat_grain_fill
+    crops: [wheat]
+    stages: [mid, late]
+    scope: day
+    all: [[tmax_c, ">", 28]]
+    value_field: tmax_c
+    type: heat_stress
+    severity: medium
+    message: "Max temperature {value} °C is above the 21-28 °C wheat needs during grain filling."
+    action: "Irrigate lightly to cool the crop; PAU recommends 2% potassium nitrate sprays for heat at grain filling (see PAU Rabi p.25)."
+    basis: quoted
+    citations:
+      - {doc: pau_rabi, page: 9, quote: "higher productivity can be expected if maximum temperature remains within 15-22 & 21-28°C ... during vegetative & grain [filling]"}
+      - {doc: pau_rabi, page: 25, quote: "Mitigation of effect of high temperature at grain filling and enhancing yield: Apply two sprays of 2% Potassium nitrate"}
+
+  - id: wheat_rain_delay_irrigation
+    crops: [wheat]
+    scope: day
+    all: [[rain_mm, ">=", 10]]
+    value_field: rain_mm
+    type: rain_skip_irrigation
+    severity: low
+    message: "About {value} mm rain expected — you can delay the next irrigation."
+    action: "For each 1 cm of rain, delay the next irrigation by 5 days (till end-January) or 2 days (after January)."
+    basis: quoted
+    citations:
+      - {doc: pau_rabi, page: 24, quote: "For each cm of rain, increase the interval for the next irrigation by 5 days upto the end of January and by 2 days after this period."}
+
+  - id: wheat_windy_no_irrigation
+    crops: [wheat]
+    stages: [mid, late]
+    scope: day
+    all: [[wind_max_kmh, ">=", 20]]
+    value_field: wind_max_kmh
+    type: lodging_risk
+    severity: medium
+    message: "Windy day (up to {value} km/h) — irrigating now can make the crop fall over (lodge)."
+    action: "Skip irrigation on this day; irrigate on a calmer day."
+    basis: operational
+    note: "PAU: do not irrigate on windy days. 'Windy' = 20 km/h or more (Beaufort 'moderate breeze' and above)."
+    citations:
+      - {doc: pau_rabi, page: 24, quote: "Care should be taken not to irrigate the crop on windy days to avoid lodging."}
+
+  # ---------------- frost (wheat, potato, tomato) ----------------
+  - id: frost_risk
+    crops: [wheat, potato, tomato]
+    scope: day
+    all: [[tmin_c, "<=", 2]]
+    value_field: tmin_c
+    type: frost
+    severity: high
+    message: "Night temperature may fall to {value} °C — frost risk."
+    action: "Give a light irrigation before the cold night (moist soil stays warmer); cover nursery/young tomato plants."
+    basis: operational
+    note: "Ground frost can form when air (screen) temperature is near 2 °C or lower on clear nights."
+    citations:
+      - {doc: pau_rabi, page: 27, quote: "Give proper irrigation to counteract the effect of frost. Avoid excessive irrigation."}
+      - {doc: pau_veg, page: 41, quote: "[Tomato] is sensitive to frost."}
+
+  # ---------------- rice ----------------
+  - id: rice_heat_flowering
+    crops: [rice]
+    stages: [mid]
+    scope: day
+    all: [[tmax_c, ">", 35]]
+    value_field: tmax_c
+    type: heat_stress
+    severity: medium
+    message: "Max temperature {value} °C is above the 33-35 °C rice prefers at flowering."
+    action: "Keep the field flooded/moist during flowering — no water stress at this stage."
+    basis: quoted
+    citations:
+      - {doc: pau_kharif, page: 10, quote: "maximum temperature remains within 34-40, 33-35 and 32-35°C ... during vegetative, flowering and grain development stages"}
+      - {doc: pau_kharif, page: 30, quote: "The crop should not suffer any water stress particularly during flowering."}
+
+  - id: rice_false_smut
+    crops: [rice]
+    stages: [mid]
+    scope: day
+    all: [[tmean_c, "between", [25, 30]], [rain_mm, ">", 0], [rh_hours_above_85, ">=", 8]]
+    value_field: tmean_c
+    type: disease_false_smut
+    severity: medium
+    message: "Drizzle with {value} °C and high humidity during flowering favours false smut."
+    action: "Avoid extra nitrogen now; follow PAU false-smut advice (Kharif p.25) and consult your KVK."
+    basis: mixed
+    note: "25-30 °C and drizzle are quoted; 'high relative humidity' = at least 8 hours at RH 85% or more."
+    citations:
+      - {doc: pau_kharif, page: 25, quote: "drizzling, 25-30 oC temperature and high relative humidity are favourable for development of [false smut]"}
+
+  - id: rice_stop_irrigation
+    crops: [rice]
+    stages: [late]
+    scope: stage
+    type: stage_advice
+    severity: low
+    message: "Crop is near maturity."
+    action: "Stop irrigation about a fortnight before maturity for easy harvest and timely rabi sowing."
+    basis: quoted
+    citations:
+      - {doc: pau_kharif, page: 20, quote: "Stop irrigation about a fortnight before maturity to facilitate easy harvesting and the timely sowing of the succeeding rabi crop."}
+
+  # ---------------- cotton ----------------
+  - id: cotton_heat_fruiting
+    crops: [cotton]
+    stages: [mid]
+    scope: day
+    all: [[tmax_c, ">", 32]]
+    value_field: tmax_c
+    type: heat_stress
+    severity: low
+    message: "Day temperature {value} °C is above the 27-32 °C cotton needs while fruiting."
+    action: "Avoid moisture stress; irrigate if the soil is dry."
+    basis: quoted
+    citations:
+      - {doc: pau_kharif, page: 53, quote: "During the fruiting phase, the day temperature ranging from 27oC to 32oC and cool nights are needed."}
+
+  - id: cotton_picking_rain
+    crops: [cotton]
+    stages: [late]
+    scope: day
+    all: [[rain_mm, ">=", 2.5]]
+    value_field: rain_mm
+    type: harvest_rain
+    severity: medium
+    message: "Rain ({value} mm) during picking can spoil open bolls."
+    action: "Pick open bolls before the rain day; keep picked kapas dry and covered."
+    basis: mixed
+    note: "Need for sunny picking days is quoted; rain day = IMD 2.5 mm threshold."
+    citations:
+      - {doc: pau_kharif, page: 53, quote: "The cotton picking period from mid-September to November must have bright sunny days to ensure a good quality of the produce."}
+
+  # ---------------- soybean ----------------
+  - id: soy_rust
+    crops: [soybean]
+    stages: [dev, mid]
+    scope: day
+    all: [[tmean_c, "between", [22, 27]], [rh_hours_above_85, ">=", 4]]
+    value_field: tmean_c
+    type: disease_rust
+    severity: medium
+    message: "Cool ({value} °C) humid weather keeps leaves wet — soybean rust risk."
+    action: "Scout lower leaves for rust pustules; follow IISR rust management and consult KVK before spraying."
+    basis: mixed
+    note: "22-27 °C and 3-4 h leaf wetness quoted; leaf wetness approximated as hours with RH 85% or more."
+    citations:
+      - {doc: iisr_soy_eb18, page: 53, quote: "low temperature (22-27 degree celcius) and high humidity (80-90%) keeps the leaf surface moist/wet for 3-4 hours continuously which further increases the chances of incidence of rust."}
+
+  - id: soy_dry_spell
+    crops: [soybean]
+    stages: [dev, mid]
+    scope: forecast
+    all: [[rain_total_mm, "<", 5]]
+    value_field: rain_total_mm
+    type: dry_spell
+    severity: medium
+    message: "Only {value} mm rain in the whole forecast — a dry spell during a critical stage."
+    action: "Give a life-saving irrigation if possible; hoe between rows to save soil moisture."
+    basis: operational
+    note: "IISR: long dry spells at critical stages cut yield. 'Dry spell' = under 5 mm total over the forecast."
+    citations:
+      - {doc: iisr_soy_eb18, page: 55, quote: "if there is a long dry spell, particularly during critical growth stages affect the yield adversely. Hence, farmers are also advised to apply life saving irrigation"}
+
+  # ---------------- onion ----------------
+  - id: onion_stemphylium
+    crops: [onion]
+    stages: [dev, mid]
+    scope: day
+    all: [[tmean_c, "between", [18, 25]], [rh_hours_above_85, ">=", 16]]
+    value_field: rh_hours_above_85
+    type: disease_stemphylium
+    severity: high
+    message: "{value} humid hours at mild temperature — conditions favour Stemphylium blight."
+    action: "Scout for yellow-brown leaf spots; avoid overhead irrigation; consult KVK on fungicide."
+    basis: mixed
+    note: "18-25 °C and 16 h leaf wetness quoted; leaf wetness approximated as hours with RH 85% or more."
+    citations:
+      - {doc: dogr_onion_gap, page: 52, quote: "Favourable conditions: Warm temperature 18-25 °C, Relative humidity 78-91%, Prolonged leaf wetness (16 hours or more)"}
+
+  - id: onion_purple_blotch
+    crops: [onion]
+    stages: [dev, mid]
+    scope: day
+    all: [[tmean_c, "between", [21, 30]], [rh_mean_pct, ">=", 80], [rain_mm, ">", 0]]
+    value_field: rh_mean_pct
+    type: disease_purple_blotch
+    severity: medium
+    message: "Humid ({value}% RH), warm, rainy day — favours purple blotch."
+    action: "Watch for purple sunken spots on leaves; keep thrips under control (thrips worsen blotch)."
+    basis: quoted
+    citations:
+      - {doc: dogr_onion_gap, page: 51, quote: "Favourable conditions: High humidity 80-90%, Warm temperature 21-30°C, Frequent rain and dews"}
+      - {doc: dogr_onion_gap, page: 11, quote: "In rabi season, a high incidence of thrips aggravates the problem of purple blotch and Stemphylium blight"}
+
+  - id: onion_anthracnose
+    crops: [onion]
+    stages: [init, dev, mid]
+    scope: day
+    all: [[tmean_c, "between", [20, 31]], [rh_mean_pct, ">=", 85], [rain_mm, ">", 0]]
+    value_field: rh_mean_pct
+    type: disease_anthracnose
+    severity: medium
+    message: "Cloudy rainy weather with {value}% humidity — favours anthracnose (twister)."
+    action: "Ensure drainage (raised beds), no standing water."
+    basis: quoted
+    citations:
+      - {doc: dogr_onion_gap, page: 53, quote: "Humidity 85-96%, Optimum temperature (20-31°C), Cloudy rainy weather in the crop stand"}
+
+  - id: onion_harvest_rain
+    crops: [onion]
+    stages: [late]
+    scope: day
+    all: [[rain_mm, ">=", 2.5]]
+    value_field: rain_mm
+    type: harvest_rain
+    severity: high
+    message: "Rain ({value} mm) near harvest — rain at harvest causes heavy losses."
+    action: "Harvest on dry days before the rain if 50-70% tops have fallen; cure bulbs 3-5 days under cover."
+    basis: mixed
+    note: "Harm of rain at harvest and the 50-70% neck-fall harvest index are quoted; rain day = IMD 2.5 mm threshold."
+    citations:
+      - {doc: dogr_onion_gap, page: 16, quote: "Cloudy weather and rains particularly during harvesting of bulbs may result in huge losses"}
+      - {doc: dogr_onion_gap, page: 24, quote: "better storage bulbs should be harvested when more than 50-70 per cent of the tops are down (neck fall) ... cured in the field for about 3-5 days"}
+
+  - id: onion_stop_irrigation
+    crops: [onion]
+    stages: [late]
+    scope: stage
+    type: stage_advice
+    severity: low
+    message: "Bulbs are maturing."
+    action: "Stop irrigation 10-15 days before harvest (when tops start falling) to reduce storage rot."
+    basis: quoted
+    citations:
+      - {doc: dogr_onion_gap, page: 24, quote: "Irrigation needs to be stopped when the crop attains maturity (10-15 days before harvest) ... which helps in reducing the rotting during storage."}
+
+  # ---------------- tomato ----------------
+  - id: tomato_heat
+    crops: [tomato]
+    stages: [mid, late]
+    scope: day
+    all: [[tmax_c, ">", 28]]
+    value_field: tmax_c
+    type: heat_stress
+    severity: low
+    message: "Day temperature {value} °C is above tomato's ideal 20-28 °C; fruit colour and set may suffer."
+    action: "Irrigate in the evening; use mulch to keep roots cool."
+    basis: quoted
+    citations:
+      - {doc: pau_veg, page: 41, quote: "moderate day temperature of 20–28 0C ... The red pigment in the fruit will develop only when the temperature is between 15 0C-30 0C."}
+
+  - id: tomato_cold_night_fruit_set
+    crops: [tomato]
+    stages: [mid]
+    scope: day
+    all: [[tmin_c, "<", 15]]
+    value_field: tmin_c
+    type: poor_fruit_set
+    severity: low
+    message: "Night temperature {value} °C is below the 15-20 °C tomatoes need to set fruit."
+    action: "Expect lower fruit set on cold nights; protect young plants from cold wind."
+    basis: quoted
+    citations:
+      - {doc: pau_veg, page: 41, quote: "The critical factor in the setting of fruits is the night temperature, the optimum range being 15–20 0C."}
+
+  - id: tomato_late_blight
+    crops: [tomato]
+    scope: day
+    all: [[rain_mm, ">=", 2.5], [rh_hours_above_85, ">=", 10]]
+    value_field: rh_hours_above_85
+    type: disease_late_blight
+    severity: high
+    message: "Rain plus {value} very humid hours — late blight can spread fast."
+    action: "Inspect for dark water-soaked patches; follow PAU late blight schedule (Veg p.48) / ask KVK."
+    basis: operational
+    note: "PAU: crop is rapidly destroyed if rains occur (in Feb). 'Rainy and humid' = 2.5 mm rain and 10+ hours at RH 85% or more."
+    citations:
+      - {doc: pau_veg, page: 48, quote: "Late blight ... Dark water-soaked patches appear on leaves and stem ... Crop is rapidly destroyed if rains occur during February."}
+
+  # ---------------- potato ----------------
+  - id: potato_late_blight
+    crops: [potato]
+    scope: day
+    all: [[rh_hours_above_85, ">=", 10], [tmean_c, "between", [10, 25]]]
+    value_field: rh_hours_above_85
+    type: disease_late_blight
+    severity: high
+    message: "{value} very humid hours in cool weather — moist weather lets late blight kill foliage in days."
+    action: "Start/continue the preventive late-blight spray schedule (PAU Veg p.123); remove infected plants."
+    basis: operational
+    note: "PAU: patches 'kill the foliage in a few days if moist weather prevails'. Moist weather = 10+ hours at RH 85% or more with mean temperature 10-25 °C."
+    citations:
+      - {doc: pau_veg, page: 123, quote: "Black patches may extend and kill the foliage in a few days if moist weather prevails."}
+
+  - id: potato_heat
+    crops: [potato]
+    scope: day
+    all: [[tmax_c, ">", 30]]
+    value_field: tmax_c
+    type: heat_stress
+    severity: medium
+    message: "Day temperature {value} °C — potato needs days below 30 °C (best tuber formation near 20 °C)."
+    action: "Irrigate lightly to keep the ridges cool and moist."
+    basis: quoted
+    citations:
+      - {doc: pau_veg, page: 115, quote: "The crop is raised when maximum day temperature is below 30 0C and night temperature is not above 20 0C ... highest tuberization ... when day and night temperature is 20 0C and 14 0C"}

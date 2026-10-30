@@ -1,0 +1,77 @@
+# Supported crops.
+# - names: what a farmer may say/see, per language (UI labels + matching in questions).
+# - agmarknet: commodity names to try, in order, against the data.gov.in mandi API.
+# - stages: FAO-56 Table 11 stage lengths in days (init, dev, mid, late), citation in `stage_source`.
+#   Footnote digits in the FAO HTML were removed (e.g. "1.152" -> 1.15).
+# - kc: FAO-56 Table 12 crop coefficients; crop water need (mm/day) = ET0 (Open-Meteo) x Kc for the stage.
+# - stage_labels: what each FAO stage means for this crop, in plain words.
+crops:
+  wheat:
+    names: {en: Wheat, hi: गेहूं, mr: गहू, pa: ਕਣਕ, ta: கோதுமை, te: గోధుమ, bn: গম, kn: ಗೋಧಿ, gu: ઘઉં}
+    agmarknet: [Wheat]
+    season: rabi
+    stages: {init: 15, dev: 25, mid: 50, late: 30}
+    stage_source: "fao56_ch6 Table 11, Barley/Oats/Wheat, November planting, Central India"
+    kc: {ini: 0.3, mid: 1.15, end: 0.3}
+    kc_source: "fao56_ch6 Table 12, Spring Wheat (Kc end 0.25-0.4; midpoint used), cereals Kc ini 0.3"
+    stage_labels: {init: germination & crown-root, dev: tillering & jointing, mid: heading, flowering & grain filling, late: ripening & harvest}
+
+  rice:
+    names: {en: Rice (paddy), hi: धान, mr: भात, pa: ਝੋਨਾ, ta: நெல், te: వరి, bn: ধান, kn: ಭತ್ತ, gu: ડાંગર}
+    agmarknet: ["Paddy(Dhan)(Common)", "Paddy(Dhan)(Basmati)", Rice]
+    season: kharif
+    stages: {init: 30, dev: 30, mid: 60, late: 30}
+    stage_source: "fao56_ch6 Table 11, Rice, Tropics"
+    kc: {ini: 1.05, mid: 1.20, end: 0.75}
+    kc_source: "fao56_ch6 Table 12, Rice (Kc end 0.90-0.60; midpoint used)"
+    stage_labels: {init: nursery & transplanting, dev: tillering, mid: panicle initiation, flowering & grain filling, late: maturity & harvest}
+
+  cotton:
+    names: {en: Cotton, hi: कपास, mr: कापूस, pa: ਨਰਮਾ/ਕਪਾਹ, ta: பருத்தி, te: పత్తి, bn: তুলা, kn: ಹತ್ತಿ, gu: કપાસ}
+    agmarknet: [Cotton, "Kapas"]
+    season: kharif
+    stages: {init: 30, dev: 50, mid: 60, late: 55}
+    stage_source: "fao56_ch6 Table 11, Cotton, Mar-May planting, Egypt; Pakistan; Calif."
+    kc: {ini: 0.35, mid: 1.175, end: 0.6}
+    kc_source: "fao56_ch6 Table 12, Cotton (Kc mid 1.15-1.20, Kc end 0.70-0.50; midpoints used), fibre crops Kc ini 0.35"
+    stage_labels: {init: emergence, dev: squaring, mid: flowering & boll formation, late: boll opening & picking}
+
+  soybean:
+    names: {en: Soybean, hi: सोयाबीन, mr: सोयाबीन, pa: ਸੋਇਆਬੀਨ, ta: சோயா, te: సోయాబీన్, bn: সয়াবিন, kn: ಸೋಯಾಬೀನ್, gu: સોયાબીન}
+    agmarknet: [Soyabean, Soybean]
+    season: kharif
+    stages: {init: 15, dev: 15, mid: 40, late: 15}
+    stage_source: "fao56_ch6 Table 11, Soybeans, Tropics"
+    kc: {ini: 0.4, mid: 1.15, end: 0.5}
+    kc_source: "fao56_ch6 Table 12, Soybeans; legumes Kc ini 0.4"
+    stage_labels: {init: emergence, dev: vegetative, mid: flowering & pod filling, late: maturity & harvest}
+
+  onion:
+    names: {en: Onion, hi: प्याज, mr: कांदा, pa: ਪਿਆਜ਼, ta: வெங்காயம், te: ఉల్లిపాయ, bn: পেঁয়াজ, kn: ಈರುಳ್ಳಿ, gu: ડુંગળી}
+    agmarknet: [Onion]
+    season: rabi
+    stages: {init: 20, dev: 35, mid: 110, late: 45}
+    stage_source: "fao56_ch6 Table 11, Onion (dry), Oct/Jan planting, Arid Region; Calif."
+    kc: {ini: 0.7, mid: 1.05, end: 0.75}
+    kc_source: "fao56_ch6 Table 12, Onions - dry; small vegetables Kc ini 0.7"
+    stage_labels: {init: transplant establishment, dev: leaf growth, mid: bulb formation & development, late: maturity, neck fall & harvest}
+
+  tomato:
+    names: {en: Tomato, hi: टमाटर, mr: टोमॅटो, pa: ਟਮਾਟਰ, ta: தக்காளி, te: టమాటా, bn: টমেটো, kn: ಟೊಮೇಟೊ, gu: ટામેટા}
+    agmarknet: [Tomato]
+    season: any
+    stages: {init: 30, dev: 40, mid: 40, late: 25}
+    stage_source: "fao56_ch6 Table 11, Tomato, January planting, Arid Region"
+    kc: {ini: 0.6, mid: 1.15, end: 0.8}
+    kc_source: "fao56_ch6 Table 12, Tomato (Kc end 0.70-0.90; midpoint used); Solanum family Kc ini 0.6"
+    stage_labels: {init: transplant establishment, dev: vegetative growth, mid: flowering & fruit set, late: fruit ripening & picking}
+
+  potato:
+    names: {en: Potato, hi: आलू, mr: बटाटा, pa: ਆਲੂ, ta: உருளைக்கிழங்கு, te: బంగాళాదుంప, bn: আলু, kn: ಆಲೂಗಡ್ಡೆ, gu: બટાકા}
+    agmarknet: [Potato]
+    season: rabi
+    stages: {init: 25, dev: 30, mid: 30, late: 30}
+    stage_source: "fao56_ch6 Table 11, Potato, Jan/Nov planting, (Semi) Arid Climate"
+    kc: {ini: 0.5, mid: 1.15, end: 0.75}
+    kc_source: "fao56_ch6 Table 12, Potato; roots and tubers Kc ini 0.5"
+    stage_labels: {init: sprouting & emergence, dev: vegetative growth, mid: tuber initiation & bulking, late: maturity & haulm drying}

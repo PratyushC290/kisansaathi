@@ -1,0 +1,19 @@
+name: daily-mandi-snapshot
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 18:30 IST, after most mandis report
+    - cron: "0 5 * * *"    # 10:30 IST, catches late uploads from the previous day
+  workflow_dispatch:
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install httpx tenacity pydantic pydantic-settings sqlalchemy "psycopg[binary]" pyyaml diskcache
+      - run: python -m jobs.snapshot_prices
+        env:
+          DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
