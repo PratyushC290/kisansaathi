@@ -75,7 +75,13 @@ def _prices(crop, state_, district):
 
 @st.cache_resource(show_spinner=False)
 def _warm():
-    """Load the embedding model + keyword index once at startup, not on the first question."""
+    """Load the embedding model + keyword index once at startup, not on the first question.
+    On a fresh host (e.g. Streamlit Cloud, no Docker build step) the guide index is built here first."""
+    from kisansaathi.rag.ingest import get_collection
+    from kisansaathi.rag.ingest import main as build_index
+    if get_collection().count() == 0:
+        with st.spinner("First start: indexing the official crop guides (a few minutes)…"):
+            build_index()
     from kisansaathi.tools.knowledge import retrieve
     retrieve("warm up", None, 1)
     return True

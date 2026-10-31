@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 streamlit>=1.40
 fastapi>=0.115
 uvicorn[standard]>=0.30
