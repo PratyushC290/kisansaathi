@@ -14,7 +14,22 @@ ORDER = ["init", "dev", "mid", "late"]
 
 @lru_cache
 def crops() -> dict:
-    return yaml.safe_load((DATA_DIR / "crops.yaml").read_text())["crops"]
+    data = yaml.safe_load((DATA_DIR / "crops.yaml").read_text())["crops"]
+    for c in data.values():
+        _scale_to_duration(c)
+    return data
+
+
+def _scale_to_duration(c: dict) -> None:
+    """Scale the FAO stage lengths so they add up to the Indian-variety duration cited in crops.yaml."""
+    want = c.get("duration_days")
+    if not want:
+        return
+    fao = c["stages"]
+    k = want / sum(fao.values())
+    st = {s: max(1, round(fao[s] * k)) for s in ORDER[:-1]}
+    st["late"] = want - sum(st.values())
+    c["fao_stages"], c["stages"] = fao, st
 
 
 def match_crop(text: str) -> str | None:
@@ -49,7 +64,7 @@ def get_stage(crop: str, sowing_date: date, on: date | None = None) -> ToolResul
     das = (on - sowing_date).days  # days after sowing/transplanting
     total = sum(c["stages"].values())
     if das < 0:
-        return ToolResult(tool="crop_stage", ok=True, source=f"FAO-56 ({c['stage_source']})",
+        return ToolResult(tool="crop_stage", ok=True, source=_source(c),
                           data={"crop": crop, "stage": "not_sown", "days_after_sowing": das,
                                 "label": f"sowing planned in {-das} days", "total_days": total})
     start = 0
@@ -57,11 +72,16 @@ def get_stage(crop: str, sowing_date: date, on: date | None = None) -> ToolResul
         length = c["stages"][s]
         if das < start + length:
             day_in = das - start
-            return ToolResult(tool="crop_stage", ok=True, source=f"FAO-56 ({c['stage_source']})", data={
+            return ToolResult(tool="crop_stage", ok=True, source=_source(c), data={
                 "crop": crop, "stage": s, "label": c["stage_labels"][s], "days_after_sowing": das,
                 "day_in_stage": day_in, "stage_length": length, "total_days": total,
                 "days_to_harvest": total - das, "kc": kc_for(crop, s, day_in), "kc_source": c["kc_source"]})
         start += length
-    return ToolResult(tool="crop_stage", ok=True, source=f"FAO-56 ({c['stage_source']})", data={
+    return ToolResult(tool="crop_stage", ok=True, source=_source(c), data={
         "crop": crop, "stage": "harvested", "label": "past typical harvest time", "days_after_sowing": das,
         "total_days": total, "days_to_harvest": 0})
+
+
+def _source(c: dict) -> str:
+    base = f"FAO-56 ({c['stage_source']})"
+    return f"{base}; duration scaled to {c['duration_source']}" if c.get("duration_source") else base

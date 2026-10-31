@@ -73,6 +73,28 @@ T = {
     },
 }
 
+# Risk names shown in the My Farm calendar (rule `type` ids in data/rules.yaml).
+RISK = {
+    "en": {},
+    "hi": {"disease_anthracnose": "एन्थ्रेक्नोज़", "disease_false_smut": "आभासी कंडुआ", "disease_late_blight": "पछेती झुलसा",
+           "disease_purple_blotch": "पर्पल ब्लॉच", "disease_rust": "रतुआ", "disease_stemphylium": "स्टेमफिलियम झुलसा",
+           "dry_spell": "सूखा दौर", "frost": "पाला", "harvest_rain": "कटाई पर बारिश", "heat_stress": "गर्मी का तनाव",
+           "heavy_rain": "भारी बारिश", "lodging_risk": "फसल गिरने का खतरा", "no_spray_rain": "बारिश: छिड़काव न करें",
+           "no_spray_wind": "तेज़ हवा: छिड़काव न करें", "poor_fruit_set": "फल कम लगना",
+           "rain_skip_irrigation": "बारिश: सिंचाई छोड़ें", "stage_advice": "अवस्था सलाह"},
+    "mr": {"disease_anthracnose": "अँथ्रॅक्नोज", "disease_false_smut": "खोटा काजळी रोग", "disease_late_blight": "करपा (लेट ब्लाइट)",
+           "disease_purple_blotch": "जांभळा करपा", "disease_rust": "तांबेरा", "disease_stemphylium": "स्टेमफिलियम करपा",
+           "dry_spell": "कोरडा काळ", "frost": "दंव", "harvest_rain": "काढणीवेळी पाऊस", "heat_stress": "उष्णतेचा ताण",
+           "heavy_rain": "मुसळधार पाऊस", "lodging_risk": "पीक लोळण्याचा धोका", "no_spray_rain": "पाऊस: फवारणी नको",
+           "no_spray_wind": "जोरदार वारा: फवारणी नको", "poor_fruit_set": "फळधारणा कमी",
+           "rain_skip_irrigation": "पाऊस: पाणी देणे टाळा", "stage_advice": "अवस्था सल्ला"},
+}
+
+
+def risk_name(lang: str, rule_type: str) -> str:
+    return RISK.get(lang, {}).get(rule_type) or rule_type.replace("_", " ")
+
+
 EXAMPLES = {
     "en": ["Should I spray my {crop} this week?", "Should I sell {crop} now or wait?", "Do I need to irrigate this week?"],
     "hi": ["क्या इस हफ्ते {crop} पर छिड़काव करूं?", "{crop} अभी बेचूं या रुकूं?", "क्या इस हफ्ते सिंचाई करनी चाहिए?"],

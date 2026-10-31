@@ -14,12 +14,13 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.i18n import EXAMPLES, t  # noqa: E402
+from app.i18n import EXAMPLES, risk_name, t  # noqa: E402
 from kisansaathi import db, health  # noqa: E402
 from kisansaathi.agent.graph import run  # noqa: E402
 from kisansaathi.dashboard import crop_outlook  # noqa: E402
 from kisansaathi.models import LANGUAGES, CropPlan, FarmerProfile  # noqa: E402
 from kisansaathi.tools import crop_stage, geocode, mandi, soil, weather  # noqa: E402
+from kisansaathi.translate import translate_all  # noqa: E402
 
 st.set_page_config(page_title="KisanSaathi", page_icon="🌾", layout="centered")
 
@@ -247,7 +248,7 @@ with tab_ask:
 
 
 # ------------------------------------------------------------------ My farm
-def risk_calendar(days: list[dict], flags) -> str:
+def risk_calendar(days: list[dict], flags, tr: dict[str, str]) -> str:
     sev_word = SEV_WORD.get(L, SEV_WORD["en"])
     types = list(dict.fromkeys(f.type for f in flags))
     head = "".join(f"<th>{date.fromisoformat(d['date']):%a<br>%d}</th>" for d in days)
@@ -259,11 +260,11 @@ def risk_calendar(days: list[dict], flags) -> str:
             if hit:
                 worst = max(hit, key=lambda f: ["low", "medium", "high"].index(f.severity))
                 bg, ink, icon = SEV[worst.severity]
-                tip = html.escape(f"{worst.message}\nSource: {worst.citation}")
+                tip = html.escape(f"{tr.get(worst.message, worst.message)}\nSource: {worst.citation}")
                 cells.append(f"<td style='background:{bg};color:{ink}' title='{tip}'>{icon} {sev_word[worst.severity]}</td>")
             else:
                 cells.append("<td>·</td>")
-        rows.append(f"<tr><td class='lbl'>{ty.replace('_', ' ')}</td>{''.join(cells)}</tr>")
+        rows.append(f"<tr><td class='lbl'>{html.escape(risk_name(L, ty))}</td>{''.join(cells)}</tr>")
     return f"<table class='cal'><tr><th></th>{head}</tr>{''.join(rows)}</table>"
 
 
@@ -292,10 +293,11 @@ with tab_farm:
             continue
         st.markdown(f"**{t(L, 'risk_cal')}**")
         if out["flags"]:
-            st.markdown(risk_calendar(fc.data["days"], out["flags"]), unsafe_allow_html=True)
+            tr = translate_all([f.message for f in out["flags"]], L)
+            st.markdown(risk_calendar(fc.data["days"], out["flags"], tr), unsafe_allow_html=True)
             with st.expander("Details & sources"):
                 for f in out["flags"]:
-                    st.markdown(f"- **{f.day:%a %d %b}** — {f.message}  \n  <span class='muted'>{f.citation}</span>",
+                    st.markdown(f"- **{f.day:%a %d %b}** — {tr.get(f.message, f.message)}  \n  <span class='muted'>{f.citation}</span>",
                                 unsafe_allow_html=True)
         else:
             st.info(t(L, "no_risks"))

@@ -3,6 +3,9 @@
 # - agmarknet: commodity names to try, in order, against the data.gov.in mandi API.
 # - stages: FAO-56 Table 11 stage lengths in days (init, dev, mid, late), citation in `stage_source`.
 #   Footnote digits in the FAO HTML were removed (e.g. "1.152" -> 1.15).
+# - duration_days (optional): crop duration for Indian varieties from the cited guide; FAO stage lengths are
+#   scaled proportionally to it (FAO's are for other climates/varieties, e.g. onion 210 d). Tomato keeps FAO
+#   (PAU gives only first picking, 112-120 days after transplanting, not the end of picking).
 # - kc: FAO-56 Table 12 crop coefficients; crop water need (mm/day) = ET0 (Open-Meteo) x Kc for the stage.
 # - stage_labels: what each FAO stage means for this crop, in plain words.
 crops:
@@ -11,6 +14,8 @@ crops:
     agmarknet: [Wheat]
     season: rabi
     stages: {init: 15, dev: 25, mid: 50, late: 30}
+    duration_days: 152
+    duration_source: "pau_rabi p.5: 'matures in 152 days' (timely-sown PAU wheat varieties mature in ~145-158 days, pp.9-11)"
     stage_source: "fao56_ch6 Table 11, Barley/Oats/Wheat, November planting, Central India"
     kc: {ini: 0.3, mid: 1.15, end: 0.3}
     kc_source: "fao56_ch6 Table 12, Spring Wheat (Kc end 0.25-0.4; midpoint used), cereals Kc ini 0.3"
@@ -21,6 +26,8 @@ crops:
     agmarknet: ["Paddy(Common)", "Paddy(Fine/Superfine/Grade A)", "Paddy(Basmati)"]  # exact names seen in the API 31 Oct 2026
     season: kharif
     stages: {init: 30, dev: 30, mid: 60, late: 30}
+    duration_days: 111
+    duration_source: "pau_kharif p.10: 'matures in about 111 days after transplanting' (day 0 = transplanting)"
     stage_source: "fao56_ch6 Table 11, Rice, Tropics"
     kc: {ini: 1.05, mid: 1.20, end: 0.75}
     kc_source: "fao56_ch6 Table 12, Rice (Kc end 0.90-0.60; midpoint used)"
@@ -31,6 +38,8 @@ crops:
     agmarknet: [Cotton, "Kapas"]
     season: kharif
     stages: {init: 30, dev: 50, mid: 60, late: 55}
+    duration_days: 165
+    duration_source: "pau_kharif p.54: 'matures in 160-165 days' (upper end used)"
     stage_source: "fao56_ch6 Table 11, Cotton, Mar-May planting, Egypt; Pakistan; Calif."
     kc: {ini: 0.35, mid: 1.175, end: 0.6}
     kc_source: "fao56_ch6 Table 12, Cotton (Kc mid 1.15-1.20, Kc end 0.70-0.50; midpoints used), fibre crops Kc ini 0.35"
@@ -41,6 +50,8 @@ crops:
     agmarknet: [Soyabean, Soybean]
     season: kharif
     stages: {init: 15, dev: 15, mid: 40, late: 15}
+    duration_days: 100
+    duration_source: "iisr_soy_climate p.9: medium duration = maturity between 95-105 days (midpoint used)"
     stage_source: "fao56_ch6 Table 11, Soybeans, Tropics"
     kc: {ini: 0.4, mid: 1.15, end: 0.5}
     kc_source: "fao56_ch6 Table 12, Soybeans; legumes Kc ini 0.4"
@@ -51,6 +62,8 @@ crops:
     agmarknet: [Onion]
     season: rabi
     stages: {init: 20, dev: 35, mid: 110, late: 45}
+    duration_days: 120
+    duration_source: "dogr_onion_gap p.32: 'matures in 100-120 days' (upper end used)"
     stage_source: "fao56_ch6 Table 11, Onion (dry), Oct/Jan planting, Arid Region; Calif."
     kc: {ini: 0.7, mid: 1.05, end: 0.75}
     kc_source: "fao56_ch6 Table 12, Onions - dry; small vegetables Kc ini 0.7"
@@ -71,6 +84,8 @@ crops:
     agmarknet: [Potato]
     season: rabi
     stages: {init: 25, dev: 30, mid: 30, late: 30}
+    duration_days: 100
+    duration_source: "pau_veg p.116: medium-maturing '(90-100 days)'"
     stage_source: "fao56_ch6 Table 11, Potato, Jan/Nov planting, (Semi) Arid Climate"
     kc: {ini: 0.5, mid: 1.15, end: 0.75}
     kc_source: "fao56_ch6 Table 12, Potato; roots and tubers Kc ini 0.5"

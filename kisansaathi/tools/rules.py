@@ -13,6 +13,8 @@ import yaml
 from ..config import DATA_DIR
 from ..models import RiskFlag
 
+# A low-severity day rule that fires on most days is a weekly condition, not a daily alert: show it once.
+COLLAPSE_LOW_IF_DAYS = 5
 SEV_RANK = {"low": 0, "medium": 1, "high": 2}
 
 
@@ -80,9 +82,14 @@ def evaluate(days: list[dict], crop: str | None, stage: str | None) -> list[Risk
             if all(_check(agg.get(f), op, v) for f, op, v in r["all"]):
                 flags.append(flag(date.fromisoformat(days[0]["date"]), agg.get(r["value_field"])))
         else:
-            for d in days:
-                if all(_check(d.get(f), op, v) for f, op, v in r["all"]):
-                    flags.append(flag(date.fromisoformat(d["date"]), d.get(r["value_field"])))
+            hits = [d for d in days if all(_check(d.get(f), op, v) for f, op, v in r["all"])]
+            if r["severity"] == "low" and len(hits) >= COLLAPSE_LOW_IF_DAYS:
+                worst = max(hits, key=lambda d: d.get(r["value_field"]) or 0)
+                f = flag(date.fromisoformat(hits[0]["date"]), worst.get(r["value_field"]))
+                f.message += f" (expected on {len(hits)} of the next {len(days)} days)"
+                flags.append(f)
+            else:
+                flags += [flag(date.fromisoformat(d["date"]), d.get(r["value_field"])) for d in hits]
     flags.sort(key=lambda f: (f.day, -SEV_RANK[f.severity]))
     return flags
 

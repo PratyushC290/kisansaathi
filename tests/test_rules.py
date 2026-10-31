@@ -56,8 +56,11 @@ def test_rules_do_not_leak_across_crops():
 
 
 def test_crop_stage_and_kc():
-    st = crop_stage.get_stage("wheat", date.today() - timedelta(days=50)).data
+    st = crop_stage.get_stage("wheat", date.today() - timedelta(days=70)).data
     assert st["stage"] == "mid" and st["kc"] == 1.15
+    # Indian-variety durations (cited in crops.yaml), not FAO's 210 days for onion
+    on = crop_stage.get_stage("onion", date.today() - timedelta(days=30)).data
+    assert on["total_days"] == 120 and on["days_to_harvest"] == 90
     assert crop_stage.get_stage("wheat", date.today() + timedelta(days=3)).data["stage"] == "not_sown"
     assert crop_stage.match_crop("गेहूं में पानी कब दूं") == "wheat"
     assert crop_stage.match_crop("कांदा") == "onion"
@@ -66,3 +69,15 @@ def test_crop_stage_and_kc():
 def test_fixture_forecast_produces_flags(forecast_days):
     flags = rules.evaluate(forecast_days, "onion", "mid")
     assert all(f.citation for f in flags)
+
+
+def test_always_on_low_rule_shows_once_not_every_day(forecast_days):
+    hot = [day(date=f"2026-11-0{i + 1}", tmax_c=33.0) for i in range(7)]
+    heat = [f for f in rules.evaluate(hot, "tomato", "mid") if f.rule_id == "tomato_heat"]
+    assert len(heat) == 1 and "7 of the next 7 days" in heat[0].message
+    some = [day(date=f"2026-11-0{i + 1}", tmax_c=33.0 if i < 2 else 25.0) for i in range(7)]
+    assert len([f for f in rules.evaluate(some, "tomato", "mid") if f.rule_id == "tomato_heat"]) == 2
+    per_rule = {}
+    for f in rules.evaluate(forecast_days, "tomato", "mid"):
+        per_rule[f.rule_id] = per_rule.get(f.rule_id, 0) + 1
+    assert per_rule.get("tomato_heat", 0) <= 1
