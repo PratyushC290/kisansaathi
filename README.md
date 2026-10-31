@@ -122,4 +122,4 @@ tests/        rules · verifier · graph (offline) · tools_live
 ```
 
 ## Team
-_Add team member names here._
+**Team Harnessers** — Pratyush Chandra, Satyaprakash Kar, Abhiram Parupudi.

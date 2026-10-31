@@ -81,3 +81,9 @@ def test_always_on_low_rule_shows_once_not_every_day(forecast_days):
     for f in rules.evaluate(forecast_days, "tomato", "mid"):
         per_rule[f.rule_id] = per_rule.get(f.rule_id, 0) + 1
     assert per_rule.get("tomato_heat", 0) <= 1
+
+
+def test_spray_blocking_rules_stay_per_day():
+    still = [day(date=f"2026-11-0{i + 1}", wind_max_kmh=30.0, spray_hours=[]) for i in range(7)]
+    wind = [f for f in rules.evaluate(still, "tomato", "mid") if f.type == "no_spray_wind"]
+    assert len(wind) == 7  # collapsing these would un-block spraying on days 2-7
