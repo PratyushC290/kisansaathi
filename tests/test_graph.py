@@ -46,3 +46,9 @@ def test_missing_crop_asks_which(offline):
     two = FARMER.model_copy(update={"crops": [*FARMER.crops, CropPlan(name="tomato", sowing_date=date(2026, 8, 1))]})
     ans = graph.run(two, "should I spray this week?", speak=False)
     assert ans.clarification and "Which crop" in ans.answer_local
+
+
+def test_progress_callback_sees_each_step(offline):
+    seen = []
+    ans = graph.run(FARMER, "Should I spray onion?", speak=False, on_step=lambda tr: seen.append(len(tr)))
+    assert len(seen) >= 4 and seen == sorted(seen) and seen[-1] == len(ans.trace)

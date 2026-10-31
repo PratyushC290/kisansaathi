@@ -237,8 +237,16 @@ with tab_ask:
     if question or audio_bytes:
         if audio_bytes:
             ss.last_audio = hash(audio_bytes)
-        with st.spinner(t(L, "thinking")):
-            ans = run(farmer, question or "", audio=audio_bytes, audio_mime="audio/wav")
+        with st.status(t(L, "thinking"), expanded=True) as box:
+            shown = [0]
+
+            def progress(trace: list[str]):
+                for line in trace[shown[0]:]:
+                    st.write(line)
+                shown[0] = len(trace)
+
+            ans = run(farmer, question or "", audio=audio_bytes, audio_mime="audio/wav", on_step=progress)
+            box.update(label=f"{'✓' if ans.verified else 'ℹ'} {ans.latency_ms / 1000:.1f}s", state="complete", expanded=False)
         q_shown = question or next((x.split("“", 1)[1].rstrip("”") for x in ans.trace if x.startswith("✓ Heard")), "🎤")
         ss.history.insert(0, {"q": q_shown, "answer": ans,
                               "mime": "audio/wav" if ans.audio_bytes and ans.audio_bytes[:4] == b"RIFF" else "audio/mp3"})

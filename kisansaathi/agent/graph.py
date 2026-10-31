@@ -14,6 +14,7 @@ import json
 import re
 import time
 from functools import lru_cache
+from typing import Callable
 
 from langgraph.graph import END, START, StateGraph
 
@@ -62,11 +63,15 @@ def _cited(final: dict) -> list:
 
 
 def run(farmer: FarmerProfile, question: str = "", audio: bytes | None = None, audio_mime: str = "audio/wav",
-        speak: bool = True) -> Answer:
+        speak: bool = True, on_step: Callable[[list[str]], None] | None = None) -> Answer:
+    """Run the agent. `on_step(trace)` is called after every node with the trace so far (live progress in the UI)."""
     t0 = time.time()
     state: AgentState = {"farmer": farmer, "question_raw": question, "audio": audio, "audio_mime": audio_mime,
                          "language": farmer.language, "trace": [], "llm_used": [], "skip_speech": not speak}
-    final = build_graph().invoke(state, {"recursion_limit": 30})
+    final = state
+    for final in build_graph().stream(state, {"recursion_limit": 30}, stream_mode="values"):
+        if on_step:
+            on_step(final.get("trace", []))
     ms = int((time.time() - t0) * 1000)
     ans = Answer(answer_local=final.get("answer_local", ""), answer_en=final.get("answer_en", ""),
                  language=final.get("language", farmer.language), citations=_cited(final),
