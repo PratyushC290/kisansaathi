@@ -362,6 +362,17 @@ with tab_mandi:
             c2.metric(t(L, "state_avg"), f"₹{d['state_avg_modal']:,.0f}")
             c3.metric(t(L, "markets"), d["n_markets"])
             st.caption(f"{t(L, 'per_q')} · arrival date {d['arrival_date']}" + (f" · {d['scope_note']}" if d["scope_note"] else ""))
+            import plotly.graph_objects as go
+            top_m = sorted(d["markets"], key=lambda m: m["modal_price"], reverse=True)[:12]
+            bars = go.Figure(go.Bar(x=[m["modal_price"] for m in top_m][::-1], y=[m["market"] for m in top_m][::-1],
+                                    orientation="h", marker=dict(color="#2a78d6"),
+                                    hovertemplate="%{y}: ₹%{x:,.0f}/q<extra></extra>"))
+            bars.add_vline(x=d["state_avg_modal"], line_dash="dash", line_color="#898781",
+                           annotation_text=f"{t(L, 'state_avg')} ₹{d['state_avg_modal']:,.0f}", annotation_position="top")
+            bars.update_layout(height=max(260, 28 * len(top_m) + 60), margin=dict(l=8, r=8, t=28, b=8),
+                               xaxis=dict(title=t(L, "per_q"), gridcolor="rgba(137,135,129,.25)", zeroline=False),
+                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(bars, width="stretch", config={"displayModeBar": False})
             st.dataframe([{"market": m["market"], "district": m["district"], "variety": m["variety"], "min": m["min_price"],
                            "max": m["max_price"], "modal": m["modal_price"], "date": m["date"]} for m in d["markets"]],
                          hide_index=True, width="stretch")
@@ -380,6 +391,7 @@ with tab_mandi:
                               xaxis=dict(showgrid=False), plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             st.caption(t(L, "history_since", d=tr.data["since"], n=tr.data["history_days"]) +
+                       (f" · same {tr.data['same_markets']} markets each day" if tr.data.get("same_markets") else "") +
                        (f" · {tr.data['direction']} {tr.data.get('change_pct', '')}%" if tr.data.get("change_pct") is not None else ""))
             with st.expander("Table"):
                 st.dataframe(ser, hide_index=True, width="stretch")

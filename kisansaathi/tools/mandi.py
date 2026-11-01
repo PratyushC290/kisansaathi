@@ -111,12 +111,22 @@ def get_trend(commodity: str, state: str, market: str | None = None, days: int =
         return ToolResult(tool="mandi_trend", ok=False, source="KisanSaathi price history DB", error=str(e))
     if market:
         hist = [h for h in hist if h.market.lower() == market.lower()] or hist
+    # Different markets report on different days (49 one day, 11 the next), so an average over "whoever reported"
+    # would show a fake price move. Compare only markets that reported on every saved day when there are enough.
+    days_of = {}
+    for h in hist:
+        days_of.setdefault(h.date, set()).add(h.market.lower())
+    common = set.intersection(*days_of.values()) if days_of else set()
+    like_for_like = len(days_of) >= 2 and len(common) >= 3
+    if like_for_like:
+        hist = [h for h in hist if h.market.lower() in common]
     by_day: dict[date, list[float]] = {}
     for h in hist:
         by_day.setdefault(h.date, []).append(h.modal_price)
     series = [{"date": d.isoformat(), "avg_modal": round(mean(v)), "n_markets": len(v)} for d, v in sorted(by_day.items())]
     data = {"commodity": commodity, "state": state, "market": market, "series": series,
-            "history_days": len(series), "since": series[0]["date"] if series else None}
+            "history_days": len(series), "since": series[0]["date"] if series else None,
+            "same_markets": len(common) if like_for_like else None}
     if len(series) >= 3:
         first = mean(p["avg_modal"] for p in series[: max(1, len(series) // 3)])
         last = mean(p["avg_modal"] for p in series[-max(1, len(series) // 3):])

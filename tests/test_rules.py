@@ -87,3 +87,18 @@ def test_spray_blocking_rules_stay_per_day():
     still = [day(date=f"2026-11-0{i + 1}", wind_max_kmh=30.0, spray_hours=[]) for i in range(7)]
     wind = [f for f in rules.evaluate(still, "tomato", "mid") if f.type == "no_spray_wind"]
     assert len(wind) == 7  # collapsing these would un-block spraying on days 2-7
+
+
+def test_trend_compares_the_same_markets_on_every_day(monkeypatch):
+    from types import SimpleNamespace as H
+
+    from kisansaathi import db
+    from kisansaathi.tools import mandi
+
+    def row(d, m, p):
+        return H(date=date.fromisoformat(d), market=m, modal_price=p)
+    hist = [row("2026-10-30", m, 1000) for m in "ABCDEFG"] + [row("2026-10-30", "Z", 9000)] + \
+           [row("2026-11-01", m, 1000) for m in "ABC"]
+    monkeypatch.setattr(db, "price_history", lambda *a, **k: hist)
+    tr = mandi.get_trend("Onion", "Maharashtra", days=30).data
+    assert [p["avg_modal"] for p in tr["series"]] == [1000, 1000] and tr["same_markets"] == 3
