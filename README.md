@@ -14,6 +14,8 @@ A farmer asks by **voice or text in their own language** — *"इस हफ्�
 spoken + written answer grounded in **live local weather, soil data, today's mandi prices and official crop guides**,
 with **every fact cited** and **every number checked** before it is shown.
 
+**Live demo:** https://kisansaathi-forge.streamlit.app/
+
 Forge Gen AI Buildathon · Theme 2 — Climate, Resource Infrastructure & Global Supply Resilience ·
 Problem: *Multilingual Agritech & Resource Advisory Assistant*.
 
@@ -52,8 +54,34 @@ flowchart LR
     CRON[GitHub Actions daily] --> M
 ```
 
+### Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Agent | **LangGraph** state machine | Explicit nodes, conditional edges and a retry loop, easy to trace and test |
+| LLMs | **Gemini** (`gemini-3.5-flash-lite`) → **Groq** (`openai/gpt-oss-120b`) | Free tiers; a failing model is put on cooldown and the next one answers |
+| Voice | **Sarvam** (STT `saaras:v4`, TTS `bulbul:v3`) → Gemini / Groq Whisper → gTTS | Indian languages with free fallbacks |
+| Knowledge | **Chroma** + multilingual MiniLM embeddings + **BM25**, merged by reciprocal rank fusion | Works across Hindi, Marathi and English questions |
+| Rules | YAML (`data/rules.yaml`), each with document, page and quote | Deterministic, testable, citable |
+| Data | Open-Meteo, ISRIC SoilGrids, data.gov.in Agmarknet | Live and official; no mock data |
+| Storage | **Supabase Postgres** (SQLite fallback), diskcache for HTTP | Price history survives restarts; the app still runs if the DB is down |
+| UI / API | **Streamlit**, **FastAPI** | Voice-first web app; REST for integrations |
+| Hosting | Streamlit Community Cloud (Docker image also provided) | Free |
+
+### Components
+
+| Component | Responsibility |
+|---|---|
+| `agent/nodes.py` | The graph nodes: transcribe, understand, plan, execute (parallel), assess, synthesize, verify, fallback, speak |
+| `agent/verify.py` | Code-level checks: every number and citation must exist in the evidence pack |
+| `tools/rules.py` | Applies thresholds from `rules.yaml` to the forecast and crop stage; repeated low-severity alerts are shown once as a weekly note |
+| `tools/crop_stage.py` | Crop stage and Kc from FAO-56, scaled to Indian-variety durations cited in `crops.yaml` |
+| `http.py` + `cache.py` | Retry with backoff, fresh cache, and a last-good fallback labelled *cached*; tools never raise |
+| `llm.py` | Provider chain with cooldowns and JSON validation with one repair attempt |
+| `jobs/snapshot_prices.py` | Saves each day's mandi prices so trends come from real history |
+
 ### One request, end to end (be ready to explain this)
-1. **Voice** → Sarvam *saarika* STT (fallback: Gemini audio) → transcript + language.
+1. **Voice** → Sarvam *saaras:v4* STT (fallbacks: Gemini audio, then Groq Whisper) → transcript + language.
 2. **understand** → LLM returns JSON: English translation, intents (`spray_timing`, `sell_or_hold`, …), crop, in-scope flag.
    If the LLM is down, keyword + script detection does this instead.
 3. **plan** → deterministic intent→tool map (e.g. `sell_or_hold` → mandi prices + our price trend + weather + guides).
@@ -85,40 +113,95 @@ Kisan Call Centre **1800-180-1551** as the fallback.
 Supported crops: wheat, rice, cotton, soybean, onion, tomato, potato · Languages: हिन्दी, मराठी, English, ਪੰਜਾਬੀ,
 தமிழ், తెలుగు, বাংলা, ಕನ್ನಡ, ગુજરાતી (UI labels in en/hi/mr; answers in all).
 
-## Run locally
+## Setup
 
+### 1. Prerequisites
+- Python **3.11**, Git, and about 2 GB of free disk (embedding model and PDFs).
+- Free API keys: [Gemini](https://aistudio.google.com/apikey), [Groq](https://console.groq.com/keys),
+  [data.gov.in](https://data.gov.in) (for mandi prices). Optional: [Sarvam](https://dashboard.sarvam.ai) (better Indian-language voice;
+  Gemini/Groq/gTTS are used without it) and a [Supabase](https://supabase.com) project (shared price history).
+
+### 2. Install and configure
 ```bash
-uv venv --python 3.11 .venv && source .venv/bin/activate
-uv pip install -r requirements.txt
-cp .env.example .env            # add GEMINI_API_KEY, GROQ_API_KEY, DATA_GOV_IN_API_KEY, (SARVAM_API_KEY, DATABASE_URL)
-python -m kisansaathi.rag.ingest   # downloads official guides, builds the index (~3 min first time)
-python -m jobs.snapshot_prices     # first price snapshot
-streamlit run app/ui.py            # app on http://localhost:8501
-uvicorn app.api:app --port 8000    # optional REST API (/docs)
+git clone https://github.com/PratyushC290/kisansaathi.git && cd kisansaathi
+uv venv --python 3.11 .venv && source .venv/bin/activate     # or: python3.11 -m venv .venv
+uv pip install -r requirements.txt                           # or: pip install -r requirements.txt
+cp .env.example .env                                         # then fill in the keys (table below)
 ```
+
+| Setting (`.env`) | Needed? | What it does |
+|---|---|---|
+| `GEMINI_API_KEY` | One of Gemini or Groq | Writes and checks answers, audio fallback |
+| `GROQ_API_KEY` | One of Gemini or Groq | Fallback model and Whisper speech-to-text |
+| `DATA_GOV_IN_API_KEY` | For mandi prices | Agmarknet daily prices |
+| `SARVAM_API_KEY` | Optional | Voice in and out for Indian languages |
+| `DATABASE_URL` | Optional | Supabase Postgres. Use the **Session pooler** URI (`…pooler.supabase.com:5432`); the direct `db.*.supabase.co` host is IPv6-only. Empty means a local SQLite file |
+| `WEATHER_URL`, `SOIL_URL`, `MANDI_URL`, … | Optional | Point one at `http://invalid` to test fallbacks |
+| `GEMINI_MODEL`, `GEMINI_FAST_MODEL`, `GROQ_MODEL` | Optional | Override model names if they change |
+
+### 3. First run
+```bash
+python -m kisansaathi.rag.ingest   # downloads the 7 official PDFs and builds the search index (~3 min, once)
+python -m jobs.snapshot_prices     # saves today's mandi prices (about 7 data.gov.in calls)
+streamlit run app/ui.py            # app on http://localhost:8501
+uvicorn app.api:app --port 8000    # optional REST API; docs at http://localhost:8000/docs
+```
+Open the app, create a farmer in the **Profile** tab (search your village or use GPS, pick crops and sowing dates),
+then use the **Ask** tab. On a fresh host with no index, the app builds it on first start.
 
 CLI: `python -m kisansaathi.agent.graph "प्याज अभी बेचूं?" --farmer tests/demo_farmer.json`
 
-Tests: `pytest` (offline) · `pytest -m live` (real APIs) · `ruff check .`
+### 4. Tests
+```bash
+pytest              # offline, no API calls (recorded fixtures live only in tests/)
+pytest -m live      # hits the real APIs; uses a few calls
+ruff check .
+```
 
-Robustness demo: set `WEATHER_URL=http://invalid` in `.env` → the app shows last saved forecast labelled *cached*;
-remove `GEMINI_API_KEY` → Groq answers; remove both LLM keys → data-only answers.
+### 5. Robustness checks
+Set `WEATHER_URL=http://invalid` in `.env`: the app shows the last saved forecast labelled *cached*.
+Remove `GEMINI_API_KEY`: Groq answers. Remove both LLM keys: data-only answers with sources.
 
-## Deploy (Hugging Face Spaces)
-Create a Space with **Docker** SDK, push this repo, and add the `.env` keys as Space secrets. The image builds the
-knowledge base at build time. Database: set `DATABASE_URL` to a Supabase Postgres URI (Space disk is wiped on restart).
-Daily price snapshots: add `DATA_GOV_IN_API_KEY` and `DATABASE_URL` as GitHub Actions secrets.
+### Troubleshooting
+| Problem | Fix |
+|---|---|
+| "knowledge base is empty" | Run `python -m kisansaathi.rag.ingest` |
+| Database warning, app uses SQLite | Use the Supabase **Session pooler** URI, not the direct host |
+| Mandi prices empty | data.gov.in returns nothing when called in quick bursts; wait a minute and retry |
+| Model returns 404 or 503 | Model names change; set `GEMINI_MODEL` / `GROQ_MODEL`, or rely on the automatic fallback |
+| No sound | Add `SARVAM_API_KEY`, or the app falls back to gTTS |
+
+## Deploy
+
+**Streamlit Community Cloud (used for the live demo).** Push the repo to GitHub, then at share.streamlit.io choose
+*Create app*, repository `…/kisansaathi`, branch `main`, main file `app/ui.py`, Python 3.11. In *Advanced settings → Secrets* add:
+```toml
+GEMINI_API_KEY = "…"
+GROQ_API_KEY = "…"
+DATA_GOV_IN_API_KEY = "…"
+SARVAM_API_KEY = "…"
+DATABASE_URL = "postgresql://…pooler.supabase.com:5432/postgres"
+```
+The first start builds the search index (a few minutes).
+
+**Docker / Hugging Face Spaces / Render.** The `Dockerfile` builds the index at image build time and serves on `$PORT` (7860).
+Note: Hugging Face now needs a PRO plan for Docker Spaces.
+
+**Daily price snapshots.** `.github/workflows/daily_snapshot.yml` runs the job twice a day if `DATA_GOV_IN_API_KEY` and
+`DATABASE_URL` are set as GitHub Actions secrets. data.gov.in may block GitHub's servers; if the workflow times out, run
+`python -m jobs.snapshot_prices` from any machine once a day instead. Trends appear after two or more days of records,
+and the direction label after three.
 
 ## Repository map
 ```
-kisansaathi/  config · models · http (retry+cache) · db · llm (Gemini→Groq) · speech · health · dashboard
+kisansaathi/  config · models · http (retry+cache) · db · llm (Gemini→Groq) · speech · translate · health · dashboard
   tools/      weather · soil · mandi · geocode · crop_stage · knowledge (hybrid RAG) · rules
   agent/      state · prompts · nodes · verify · graph
   rag/        ingest
 app/          ui.py (Streamlit) · api.py (FastAPI) · i18n.py
 jobs/         snapshot_prices.py
 data/         sources.yaml · rules.yaml · crops.yaml
-tests/        rules · verifier · graph (offline) · tools_live
+tests/        rules · verifier · graph · robustness · translate · ui (all offline) · tools_live (real APIs)
 ```
 
 ## Team
