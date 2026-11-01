@@ -1,13 +1,3 @@
----
-title: KisanSaathi
-emoji: 🌾
-colorFrom: green
-colorTo: yellow
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # 🌾 KisanSaathi — multilingual farm advisor agent
 
 A farmer asks by **voice or text in their own language** — *"इस हफ्ते प्याज पर छिड़काव करूं?"* — and gets a short
