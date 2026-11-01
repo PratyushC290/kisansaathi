@@ -145,7 +145,7 @@ def profile_editor(existing: FarmerProfile | None):
     name = c1.text_input(t(L, "name"), value=existing.name if existing else "")
     lang = c2.selectbox(t(L, "language"), list(LANGUAGES), format_func=lambda c: LANGUAGES[c],
                         index=list(LANGUAGES).index(existing.language if existing else L))
-    loc = ss.get("loc") or ({"lat": existing.lat, "lon": existing.lon, "place": existing.place,
+    loc = ss.get("farm_loc") or ({"lat": existing.lat, "lon": existing.lon, "place": existing.place,
                              "district": existing.district, "state": existing.state} if existing else None)
     q = st.text_input(t(L, "place"), value=(loc or {}).get("place", ""))
     b1, b2 = st.columns(2)
@@ -161,8 +161,8 @@ def profile_editor(existing: FarmerProfile | None):
             if gps and gps.get("latitude"):
                 rev = geocode.reverse(gps["latitude"], gps["longitude"])
                 if rev.ok:
-                    ss.loc = {"lat": gps["latitude"], "lon": gps["longitude"], **rev.data}
-                    loc = ss.loc
+                    ss.farm_loc = {"lat": gps["latitude"], "lon": gps["longitude"], **rev.data}
+                    loc = ss.farm_loc
                 else:
                     st.warning(rev.error)
         except Exception:  # noqa: BLE001 - GPS is optional
@@ -172,7 +172,7 @@ def profile_editor(existing: FarmerProfile | None):
         i = st.radio(t(L, "pick_place"), range(len(opts)),
                      format_func=lambda k: f"{opts[k]['name']}, {opts[k]['district']}, {opts[k]['state']}")
         o = opts[i]
-        ss.loc = loc = {"lat": o["lat"], "lon": o["lon"], "place": o["name"], "district": o["district"], "state": o["state"]}
+        ss.farm_loc = loc = {"lat": o["lat"], "lon": o["lon"], "place": o["name"], "district": o["district"], "state": o["state"]}
     if loc:
         st.success(f"📍 {loc.get('place')}, {loc.get('district')}, {loc.get('state')} ({loc['lat']:.3f}, {loc['lon']:.3f})")
 
@@ -192,7 +192,7 @@ def profile_editor(existing: FarmerProfile | None):
                              language=lang, crops=plans)
         ss.farmer_id = db.save_farmer(prof)
         ss.ui_lang = lang
-        ss.pop("loc", None)
+        ss.pop("farm_loc", None)
         ss.pop("geo_results", None)
         st.success(t(L, "saved"))
         st.rerun()
