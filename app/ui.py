@@ -230,7 +230,8 @@ def show_answer(item: dict):
 
 
 with tab_ask:
-    lang = farmer.language
+    lang = L  # the language picked in the sidebar drives examples, the answer and the voice reply
+    asker = farmer.model_copy(update={"language": L})
     ex_crop = crop_name(farmer.crops[0].name, lang) if farmer.crops else ""
     examples = [e.format(crop=ex_crop) for e in EXAMPLES.get(lang, EXAMPLES["en"])]
     audio = st.audio_input(t(L, "ask_voice"))
@@ -251,7 +252,7 @@ with tab_ask:
                     st.write(line)
                 shown[0] = len(trace)
 
-            ans = run(farmer, question or "", audio=audio_bytes, audio_mime="audio/wav", on_step=progress)
+            ans = run(asker, question or "", audio=audio_bytes, audio_mime="audio/wav", on_step=progress)
             box.update(label=f"{'✓' if ans.verified else 'ℹ'} {ans.latency_ms / 1000:.1f}s", state="complete", expanded=False)
         q_shown = question or next((x.split("“", 1)[1].rstrip("”") for x in ans.trace if x.startswith("✓ Heard")), "🎤")
         ss.history.insert(0, {"q": q_shown, "answer": ans,
@@ -385,7 +386,7 @@ with tab_mandi:
         else:
             st.info(t(L, "no_history"))
         if st.button("🤔 " + t(L, "ask_sell"), width="stretch"):
-            ss.pending_q = EXAMPLES.get(farmer.language, EXAMPLES["en"])[1].format(crop=crop_name(crop, farmer.language))
+            ss.pending_q = EXAMPLES.get(L, EXAMPLES["en"])[1].format(crop=crop_name(crop, L))
             st.toast("→ " + t(L, "tab_ask"))
             st.rerun()
 

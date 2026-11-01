@@ -52,3 +52,10 @@ def test_progress_callback_sees_each_step(offline):
     seen = []
     ans = graph.run(FARMER, "Should I spray onion?", speak=False, on_step=lambda tr: seen.append(len(tr)))
     assert len(seen) >= 4 and seen == sorted(seen) and seen[-1] == len(ans.trace)
+
+
+def test_answer_language_follows_the_selected_language(offline):
+    mr = FARMER.model_copy(update={"language": "mr"})
+    assert graph.run(mr, "या आठवड्यात कांद्यावर फवारणी करू का?", speak=False).language == "mr"
+    en = FARMER.model_copy(update={"language": "en"})
+    assert graph.run(en, "Should I spray onion this week?", speak=False).language == "en"
